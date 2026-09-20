@@ -6,7 +6,7 @@ $build=Join-Path $PSScriptRoot 'artifacts\build'
 $stage=Join-Path $PSScriptRoot "release-staging\$Version"
 $out=Join-Path $PSScriptRoot 'dist'
 New-Item -ItemType Directory -Force -Path $stage,$out|Out-Null
-$files=@('Music Island.exe','IslandView.dll','CoverBridge.dll','Island.ps1','media-worker.ps1','lyrics-worker.ps1','local-worker.ps1','model-worker.ps1','Uninstall.ps1','START-HERE.txt','README.md','LICENSE','VERSION')
+$files=@('Music Island.exe','IslandView.dll','CoverBridge.dll','Island.ps1','media-worker.ps1','lyrics-worker.ps1','lyrics-support.ps1','local-worker.ps1','model-worker.ps1','Uninstall.ps1','START-HERE.txt','README.md','LICENSE','VERSION')
 foreach($file in $files){Copy-Item -LiteralPath (Join-Path $(if($file -match '\.(exe|dll)$'){$build}else{$PSScriptRoot}) $file) -Destination (Join-Path $stage $file) -Force}
 @{version=$Version;files=$files}|ConvertTo-Json|Set-Content -Encoding UTF8 -LiteralPath (Join-Path $stage 'package-manifest.json')
 $zip=Join-Path $out "Music-Island-$Version-portable.zip"

@@ -1,5 +1,6 @@
 ﻿param($Shared)
 $ErrorActionPreference='Stop'
+. (Join-Path $Shared.Root 'lyrics-support.ps1')
 $state=$null; $nextState=[DateTime]::MinValue; $artTrack=''
 while(-not $Shared.Stop){
  try {
@@ -10,15 +11,15 @@ while(-not $Shared.Stop){
    $null=Invoke-RestMethod $uri -TimeoutSec 2
   }
   if([DateTime]::Now -ge $nextState){
-   $state=Invoke-RestMethod 'http://127.0.0.1:8770/state' -TimeoutSec 2
+   $state=Get-Utf8Json 'http://127.0.0.1:8770/state' -TimeoutMs 2000
    if($state.track.track_id -and $state.track.track_id -ne $artTrack){
     $null=Invoke-WebRequest 'http://127.0.0.1:8770/art' -UseBasicParsing -TimeoutSec 2
     $artTrack=$state.track.track_id
-    $state=Invoke-RestMethod 'http://127.0.0.1:8770/state' -TimeoutSec 2
+    $state=Get-Utf8Json 'http://127.0.0.1:8770/state' -TimeoutMs 2000
    }
    $nextState=[DateTime]::Now.AddSeconds(1)
   }
-  $tick=Invoke-RestMethod 'http://127.0.0.1:8770/tick' -TimeoutSec 2
+  $tick=Get-Utf8Json 'http://127.0.0.1:8770/tick' -TimeoutMs 2000
   if($tick.v -ne $state.v -or ($state.lyrics.window.Count -gt 0 -and ($tick.line -ge $state.lyrics.window[-1].i-1 -or $tick.line -lt $state.lyrics.window[0].i))){$nextState=[DateTime]::MinValue}
   $Shared.Local=@{State=$state;Tick=$tick;Updated=[DateTime]::Now}
  }catch{$Shared.Local=$null;Start-Sleep -Milliseconds 1500}

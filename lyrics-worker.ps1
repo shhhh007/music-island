@@ -1,40 +1,24 @@
 ﻿param($Shared)
 $ErrorActionPreference='Stop'
 [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
+. (Join-Path $Shared.Root 'lyrics-support.ps1')
 $cache=@{}
-$nextLocal=[DateTime]::MinValue
 while(-not $Shared.Stop){
     $s=$Shared.State
     if(-not $s){$Shared.Lyrics=$null; Start-Sleep -Milliseconds 500; continue}
-    $matched=$false
-    if([DateTime]::Now -ge $nextLocal){
-        try {
-            $data=$Shared.Local.State
-            if($data.track.title -eq $s.Title -and $data.track.artist -eq $s.Artist -and $data.lyrics.state -eq 'found'){
-                $Shared.Lyrics=@{Key=$s.Key; Lines=@($data.lyrics.window); Source='MusicUI'; Position=[double]$data.pos; Updated=[DateTime]::Now; Playing=[bool]$data.playing}
-                $matched=$true
-            }
-        } catch { $nextLocal=[DateTime]::Now.AddSeconds(10) }
-    }
+    $data=$Shared.Local.State
+    $matched=$data -and $data.track.title -eq $s.Title -and $data.track.artist -eq $s.Artist -and $data.lyrics.state -eq 'found'
     if(-not $matched){
-        if(-not $cache.ContainsKey($s.Key)){
-            $lines=@()
-            try {
-                $title=[Uri]::EscapeDataString($s.Title); $artist=[Uri]::EscapeDataString($s.Artist)
-                $duration=[int][Math]::Round($s.Duration-$s.Start)
-                $result=Invoke-RestMethod "https://lrclib.net/api/get?track_name=$title&artist_name=$artist&duration=$duration" -Headers @{'User-Agent'='MusicIsland/1.0 (Windows desktop music overlay)'} -TimeoutSec 6
-                foreach($row in ($result.syncedLyrics -split "`n")){
-                    $tags=[regex]::Matches($row,'\[(\d+):(\d+(?:\.\d+)?)\]')
-                    $text=([regex]::Replace($row,'\[[^\]]*\]','')).Trim()
-                    foreach($tag in $tags){$lines+=@{start=([double]$tag.Groups[1].Value*60+[double]::Parse($tag.Groups[2].Value,[Globalization.CultureInfo]::InvariantCulture));text=$text}}
-                }
-                $lines=@($lines | Sort-Object { $_.start })
-                for($i=0;$i -lt $lines.Count;$i++){$lines[$i].end=$(if($i+1 -lt $lines.Count){$lines[$i+1].start}else{$s.Duration})}
-            } catch { }
+        $entry=$cache[$s.Key]
+        if(-not $entry -or [DateTime]::UtcNow -ge $entry.RetryAt -or [Math]::Abs($entry.Duration-($s.Duration-$s.Start)) -gt .5){
+            $lines=@();$retry=[DateTime]::UtcNow.AddMinutes(10)
+            try {$lines=@(Find-SyncedLyrics $s.Title $s.Artist ($s.Duration-$s.Start));$Shared.LyricsError='';if($lines.Count){$retry=[DateTime]::MaxValue}}
+            catch {$Shared.LyricsError=$_.Exception.Message;$retry=[DateTime]::UtcNow.AddSeconds(30)}
             if($cache.Count -ge 30){$cache.Clear()}
-            $cache[$s.Key]=$lines
+            $entry=@{Lines=$lines;RetryAt=$retry;Duration=($s.Duration-$s.Start)};$cache[$s.Key]=$entry
         }
-        if(-not $Shared.Lyrics -or $Shared.Lyrics.Key -ne $s.Key -or $Shared.Lyrics.Source -ne 'LRCLIB'){$Shared.Lyrics=@{Key=$s.Key;Lines=$cache[$s.Key];Source='LRCLIB'}}
+        # A network request may finish after the user has already changed the song.
+        if($Shared.State -and $Shared.State.Key -eq $s.Key -and (-not $Shared.Lyrics -or $Shared.Lyrics.Key -ne $s.Key -or -not [object]::ReferenceEquals($Shared.Lyrics.Lines,$entry.Lines))){$Shared.Lyrics=@{Key=$s.Key;Lines=$entry.Lines;Source='LRCLIB'}}
     }
     Start-Sleep -Milliseconds 500
 }

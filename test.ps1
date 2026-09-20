@@ -1,4 +1,5 @@
 ﻿$ErrorActionPreference='Stop'
+& "$PSScriptRoot\test-lyrics.ps1"
 $output=Join-Path $PSScriptRoot 'artifacts\tests'
 New-Item -ItemType Directory -Force -Path $output|Out-Null
 $framework="$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319"
