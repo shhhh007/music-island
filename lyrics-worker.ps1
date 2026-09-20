@@ -34,7 +34,7 @@ while(-not $Shared.Stop){
             if($cache.Count -ge 30){$cache.Clear()}
             $cache[$s.Key]=$lines
         }
-        $Shared.Lyrics=@{Key=$s.Key;Lines=$cache[$s.Key];Source='LRCLIB'}
+        if(-not $Shared.Lyrics -or $Shared.Lyrics.Key -ne $s.Key -or $Shared.Lyrics.Source -ne 'LRCLIB'){$Shared.Lyrics=@{Key=$s.Key;Lines=$cache[$s.Key];Source='LRCLIB'}}
     }
     Start-Sleep -Milliseconds 500
 }

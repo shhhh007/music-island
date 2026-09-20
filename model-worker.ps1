@@ -1,14 +1,16 @@
 ﻿param($Shared)
 $ErrorActionPreference='Stop'
 $epoch=[DateTime]::SpecifyKind([DateTime]'1970-01-01',[DateTimeKind]::Utc)
+$previousState=$null;$previousLocal=$null;$previousLyrics=$null;$initialized=$false
 function Stamp($date){if($date){return ([DateTime]$date).ToUniversalTime().Subtract($epoch).TotalSeconds};return 0}
 while(-not $Shared.Stop){
  try {
   $s=$Shared.State
+  $local=$Shared.Local;$ly=$Shared.Lyrics
+  if($initialized -and [object]::ReferenceEquals($s,$previousState) -and [object]::ReferenceEquals($local,$previousLocal) -and [object]::ReferenceEquals($ly,$previousLyrics)){Start-Sleep -Milliseconds 65;continue}
   $m=@{Key='';Title='';Artist='';Source='';Playing=$false;Seek=$false;Play=$false;Prev=$false;Next=$false;Position=0;Start=0;Duration=0;Volume=-1;Bands=@();Accent=$null;Lines=@();LyricsLocal=$false;LyricsPosition=0;SampleUtc=0;LyricsSampleUtc=0;LyricsIndex=-1}
   $art=$null;$rows=@()
   if($s){foreach($name in @('Key','Title','Artist','Source','Playing','Seek','Play','Prev','Next','Position','Start','Duration')){$m[$name]=$s[$name]};$art=$s.Cover;$m.SampleUtc=Stamp $s.Updated}
-  $local=$Shared.Local
   $matched=$s -and $local -and ($local.Tick.v -eq $local.State.v) -and $local.State.track.title -eq $s.Title -and $local.State.track.artist -eq $s.Artist
   if($matched){
    $m.Bands=@($local.Tick.bands);$m.Position=[double]$local.Tick.pos;$m.SampleUtc=Stamp $local.Updated;$m.Playing=[bool]$local.Tick.playing
@@ -19,7 +21,6 @@ while(-not $Shared.Stop){
    $rows=@($local.State.lyrics.window);$m.LyricsLocal=$true;$m.LyricsIndex=[int]$local.Tick.line
    $m.LyricsPosition=[double]$local.Tick.pos;$m.LyricsSampleUtc=Stamp $local.Updated
   }else{
-   $ly=$Shared.Lyrics
    if($s -and $ly -and $ly.Key -eq $s.Key -and $ly.Source -eq 'LRCLIB'){$rows=@($ly.Lines)}
   }
   $lines=@();$index=0
@@ -30,6 +31,7 @@ while(-not $Shared.Stop){
   $m.Lines=$lines
   if($Shared.PreviewLyrics){$m.Lines=@(@{start=0;end=99999;index=0;text='Синхронный текст песни · проверка интерфейса';words=@()});$m.LyricsLocal=$false}
   $Shared.Render=@{Json=($m|ConvertTo-Json -Depth 10 -Compress);Art=$art;Title=$m.Title}
+  $previousState=$s;$previousLocal=$local;$previousLyrics=$ly;$initialized=$true
  }catch{$Shared.ModelError=$_.Exception.Message}
  Start-Sleep -Milliseconds 65
 }

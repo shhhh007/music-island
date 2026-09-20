@@ -59,6 +59,14 @@ namespace MusicIsland {
   class Marquee { public string Key; public double Phase,Offset,Over,Raw,Calm,Updated; }
   Dictionary<string,Marquee> marquees=new Dictionary<string,Marquee>();
   Dictionary<string,double> measurements=new Dictionary<string,double>();
+  readonly JavaScriptSerializer serializer=new JavaScriptSerializer();
+  readonly Dictionary<string,FormattedText> textCache=new Dictionary<string,FormattedText>();
+  readonly Dictionary<FormattedText,DrawingGroup> textDrawings=new Dictionary<FormattedText,DrawingGroup>();
+  readonly Dictionary<Color,Brush> brushCache=new Dictionary<Color,Brush>();
+  static readonly Typeface normalFace=new Typeface("Segoe UI");
+  static readonly Typeface semiFace=new Typeface(new FontFamily("Segoe UI"),FontStyles.Normal,FontWeights.SemiBold,FontStretches.Normal);
+  static readonly Typeface boldFace=new Typeface(new FontFamily("Segoe UI"),FontStyles.Normal,FontWeights.Bold,FontStretches.Normal);
+  string lastJson;
   public bool Diagnostics;
   public int SurfaceChanges;
   public List<double> FrameDurations=new List<double>();
@@ -91,6 +99,7 @@ namespace MusicIsland {
     registered=RegisterHotKey(handle,1,0x4003,0x49); ApplyBlur();
    };
    host.Closed+=delegate {CompositionTarget.Rendering-=Frame;if(registered)UnregisterHotKey(handle,1);if(source!=null)source.RemoveHook(Hook);};
+   host.IsVisibleChanged+=delegate {lastFrame=watch.Elapsed.TotalSeconds;};
    CompositionTarget.Rendering+=Frame;
    MouseMove+=Move; MouseLeave+=delegate {if(!IsMouseCaptured)mouse=new Point(-1000,-1000);};
    MouseLeftButtonDown+=Down;MouseLeftButtonUp+=Up;
@@ -140,8 +149,10 @@ namespace MusicIsland {
   }
   public void SendConfig(){Send("config",settings.Equalizer?settings.Bars:0);}
   public void Update(string json,byte[] bytes){
-   Model next;try{next=new JavaScriptSerializer().Deserialize<Model>(json);}catch{return;}
+   if(String.Equals(json,lastJson,StringComparison.Ordinal))return;
+   Model next;try{next=serializer.Deserialize<Model>(json);}catch{return;}
    if(next==null)return;
+   lastJson=json;
    bool changed=next.Key!=model.Key;
    if(changed){oldTitle=model.Title;oldArtist=model.Artist;lastSwap=watch.Elapsed.TotalSeconds;marquees.Clear();measurements.Clear();lineIndex=-1;lineIdentity="";currentLine=oldLine="";activeLine=previousLine=null;lastMediaSample=lastLyricSample=0;}
    double utc=DateTime.UtcNow.Subtract(new DateTime(1970,1,1)).TotalSeconds;
@@ -171,6 +182,7 @@ namespace MusicIsland {
   double Position {get{return dragSeek?seekAt:Clamp(positionShown,model.Start,Math.Max(model.Start,model.Duration));}}
   double LyricPosition {get{return model.LyricsLocal?lyricPositionShown:Position;}}
   void Frame(object sender,EventArgs args){
+   if(!host.IsVisible)return;
    var rendering=args as RenderingEventArgs;if(rendering!=null){if(rendering.RenderingTime==lastRenderingTime)return;lastRenderingTime=rendering.RenderingTime;}
    double now=watch.Elapsed.TotalSeconds,elapsed=now-lastFrame;if(elapsed<1.0/240)return;double dt=Math.Min(elapsed,.1);lastFrame=now;frameDt=dt;
    if(Diagnostics&&FrameDurations.Count<20000)FrameDurations.Add(elapsed);
@@ -226,11 +238,23 @@ namespace MusicIsland {
    if(now-lastRaise>1&&handle!=IntPtr.Zero){SetWindowPos(handle,new IntPtr(-1),0,0,0,0,0x13);lastRaise=now;}
    InvalidateVisual();
   }
-  Brush B(double r,double g,double b,double a){var brush=new SolidColorBrush(Color.FromArgb((byte)Clamp(a,0,255),(byte)Clamp(r,0,255),(byte)Clamp(g,0,255),(byte)Clamp(b,0,255)));brush.Freeze();return brush;}
+  Brush B(double r,double g,double b,double a){Color color=Color.FromArgb((byte)Clamp(a,0,255),(byte)Clamp(r,0,255),(byte)Clamp(g,0,255),(byte)Clamp(b,0,255));Brush cached;if(brushCache.TryGetValue(color,out cached))return cached;var brush=new SolidColorBrush(color);brush.Freeze();if(brushCache.Count>=512)brushCache.Clear();brushCache[color]=brush;return brush;}
   Brush Accent(double alpha){return B(ar,ag,ab,255*alpha);}
-  FormattedText FT(string text,double size,bool bold,Brush brush){return new FormattedText(text??"",CultureInfo.CurrentCulture,FlowDirection.LeftToRight,new Typeface(new FontFamily("Segoe UI"),FontStyles.Normal,bold?(size>=15.9*k?FontWeights.Bold:FontWeights.SemiBold):FontWeights.Normal,FontStretches.Normal),size,brush,source==null?1:source.CompositionTarget.TransformToDevice.M11);}
+  FormattedText FT(string text,double size,bool bold,Brush brush){
+   double dpi=source==null?1:source.CompositionTarget.TransformToDevice.M11;
+   int weight=bold?(size>=15.9*k?2:1):0;
+   string key=size.ToString("R",CultureInfo.InvariantCulture)+"|"+dpi.ToString("R",CultureInfo.InvariantCulture)+"|"+weight+"|"+text;
+   FormattedText result;if(textCache.TryGetValue(key,out result))return result;
+   result=new FormattedText(text??"",CultureInfo.CurrentCulture,FlowDirection.LeftToRight,weight==2?boldFace:weight==1?semiFace:normalFace,size,Brushes.White,dpi);
+   if(textCache.Count>=512){textCache.Clear();textDrawings.Clear();}textCache[key]=result;return result;
+  }
   double Measure(string text,double size,bool bold){string key=size.ToString("R",CultureInfo.InvariantCulture)+"|"+bold+"|"+text;double value;if(measurements.TryGetValue(key,out value))return value;value=FT(text,size,bold,Brushes.White).WidthIncludingTrailingWhitespace;if(measurements.Count>=800)measurements.Clear();measurements[key]=value;return value;}
-  void Text(DrawingContext d,string text,double px,double py,double size,bool bold,Brush brush){d.DrawText(FT(text,size,bold,brush),new Point(px,py));}
+  void Text(DrawingContext d,string text,double px,double py,double size,bool bold,Brush brush){
+   // All labels are white; apply their fade separately so animation reuses glyph layout.
+   var formatted=FT(text,size,bold,brush);DrawingGroup drawing;
+   if(!textDrawings.TryGetValue(formatted,out drawing)){drawing=new DrawingGroup();using(var context=drawing.Open())context.DrawText(formatted,new Point(0,0));drawing.Freeze();textDrawings[formatted]=drawing;}
+   var solid=brush as SolidColorBrush;d.PushOpacity(solid==null?1:solid.Color.A/255.0);d.PushTransform(new TranslateTransform(px,py));d.DrawDrawing(drawing);d.Pop();d.Pop();
+  }
   void Panel(DrawingContext d,Rect rect,double radius,double opacity){
    d.DrawRoundedRectangle(B(settings.Blur?14:10,settings.Blur?14:10,settings.Blur?18:12,(settings.Blur?150:238)*opacity),null,rect,radius,radius);
    var gradient=new LinearGradientBrush(Color.FromArgb((byte)(30*opacity),(byte)ar,(byte)ag,(byte)ab),Color.FromArgb(0,(byte)ar,(byte)ag,(byte)ab),new Point(0,0),new Point(0,1));gradient.Freeze();d.DrawRoundedRectangle(gradient,null,rect,radius,radius);
