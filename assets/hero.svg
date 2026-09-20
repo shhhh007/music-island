@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="680" viewBox="0 0 1280 680">
+<defs>
+ <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#111922"/><stop offset="1" stop-color="#080b10"/></linearGradient>
+ <radialGradient id="glow"><stop stop-color="#78d6c0" stop-opacity=".16"/><stop offset="1" stop-color="#78d6c0" stop-opacity="0"/></radialGradient>
+ <linearGradient id="card" x2="0" y2="1"><stop stop-color="#242d30"/><stop offset="1" stop-color="#0a0e11"/></linearGradient>
+ <linearGradient id="art" x2="1" y2="1"><stop stop-color="#95ebcc"/><stop offset="1" stop-color="#437887"/></linearGradient>
+ <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".7" fill="#a1c8bf" opacity=".13"/></pattern>
+</defs>
+<rect width="1280" height="680" rx="28" fill="url(#bg)"/>
+<rect width="1280" height="680" rx="28" fill="url(#grid)"/>
+<ellipse cx="980" cy="310" rx="440" ry="400" fill="url(#glow)"/>
+<g font-family="Segoe UI,Arial,sans-serif">
+ <rect x="64" y="54" width="42" height="24" rx="12" fill="#97ebcc"/>
+ <circle cx="78" cy="66" r="3" fill="#0e171a"/><circle cx="91" cy="66" r="3" fill="#0e171a"/>
+ <text x="120" y="74" fill="#e9f5ef" font-size="23" font-weight="600">Music Island</text>
+ <rect x="1011" y="49" width="205" height="37" rx="18.5" fill="#172823" stroke="#33534a"/>
+ <text x="1113" y="73" text-anchor="middle" fill="#b7e9d9" font-size="12" letter-spacing="2">WINDOWS · OPEN SOURCE</text>
+ <text x="64" y="228" fill="#f3f7f5" font-size="68" font-weight="700" letter-spacing="-2">Музыка.</text>
+ <text x="64" y="307" fill="#97ebcc" font-size="68" font-weight="700" letter-spacing="-2">Всегда рядом.</text>
+ <text x="67" y="365" fill="#a9b8be" font-size="22">Твой трек — поверх привычных окон.</text>
+ <text x="67" y="399" fill="#a9b8be" font-size="22">Обложка. Управление. Текст песни.</text>
+ <rect x="65" y="448" width="214" height="49" rx="24.5" fill="#97ebcc"/>
+ <text x="172" y="479" text-anchor="middle" fill="#10251d" font-size="17" font-weight="700">Один маленький остров</text>
+ <text x="68" y="596" fill="#647a82" font-size="13" letter-spacing="2">БЕЗ РЕКЛАМЫ · БЕЗ АККАУНТА · БЕЗ ЛИШНЕГО</text>
+ <g transform="translate(678 169)">
+  <rect width="518" height="229" rx="38" fill="#000" opacity=".35" transform="translate(0 16)"/>
+  <rect width="518" height="229" rx="38" fill="url(#card)" stroke="#3b504b" stroke-opacity=".4"/>
+  <rect x="22" y="23" width="98" height="98" rx="23" fill="url(#art)"/>
+  <circle cx="71" cy="72" r="32" fill="#15393e"/><circle cx="71" cy="72" r="24" fill="none" stroke="#3d6869"/><circle cx="71" cy="72" r="14" fill="#97ebcc"/><circle cx="71" cy="72" r="4" fill="#15393e"/>
+  <text x="142" y="55" fill="#f1f5f3" font-size="23" font-weight="700">A little closer</text>
+  <text x="142" y="84" fill="#a6b5b4" font-size="17">Music Island · demo</text>
+  <g fill="#97ebcc"><rect x="433" y="43" width="5" height="9" rx="2.5"/><rect x="444" y="37" width="5" height="21" rx="2.5"/><rect x="455" y="32" width="5" height="31" rx="2.5"/><rect x="466" y="38" width="5" height="19" rx="2.5"/><rect x="477" y="43" width="5" height="9" rx="2.5"/></g>
+  <rect x="23" y="132" width="472" height="6" rx="3" fill="#35403d"/><rect x="23" y="132" width="288" height="6" rx="3" fill="#97ebcc"/>
+  <text x="23" y="163" fill="#a0aca9" font-size="14">1:42</text><text x="493" y="163" fill="#a0aca9" font-size="14" text-anchor="end">−1:06</text>
+  <g fill="#e8f0ec"><path d="M178 184v22h4v-22zm7 11 17-11v22z"/><rect x="250" y="182" width="6" height="25" rx="2"/><rect x="263" y="182" width="6" height="25" rx="2"/><path d="M318 184v22l17-11zm20 0v22h4v-22z"/></g>
+  <rect x="60" y="245" width="398" height="42" rx="21" fill="#142021" stroke="#324841" stroke-opacity=".5"/>
+  <text x="259" y="272" fill="#e4f0e9" font-size="18" font-weight="600" text-anchor="middle">Любимая строчка — в нужный момент.</text>
+  <g transform="translate(110 350)"><rect width="298" height="52" rx="26" fill="#121b1d" stroke="#344840"/><circle cx="26" cy="26" r="19" fill="url(#art)"/><circle cx="26" cy="26" r="8" fill="#264e4b"/><text x="59" y="32" fill="#dce9e2" font-size="16">A little closer</text><g fill="#97ebcc"><circle cx="240" cy="26" r="3"/><circle cx="251" cy="26" r="3"/><circle cx="262" cy="26" r="3"/><circle cx="273" cy="26" r="3"/></g></g>
+ </g>
+ <text x="1197" y="627" text-anchor="end" fill="#60766d" font-size="12">Иллюстрация интерфейса · демонстрационный трек</text>
+</g></svg>

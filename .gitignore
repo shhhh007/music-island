@@ -1,0 +1,22 @@
+# Local configuration, playback data and diagnostics
+settings.json
+*.log
+selftest.json
+regression-results.json
+regression-error.txt
+preview*.png
+regression-*.png
+runtime-status.json
+exit.request
+
+# Build outputs and private publishing tools
+*.exe
+*.dll
+*.zip
+.tools/
+dist/
+artifacts/
+release-staging/
+test-install/
+*.user
+.vs/

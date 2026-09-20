@@ -1,0 +1,25 @@
+name: Сообщить об ошибке
+description: Помогите сделать Music Island лучше
+title: "[Bug] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Что произошло?
+      description: Что ожидалось и что получилось? Без личных данных.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как повторить?
+      placeholder: "1. Открыть...\n2. Нажать..."
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Windows, версия приложения, браузер / плеер
+      placeholder: Windows 11 · Music Island 1.0.0 · Chrome / SoundCloud
+    validations:
+      required: true
