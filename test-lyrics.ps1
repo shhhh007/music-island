@@ -19,4 +19,15 @@ $script:requests=@();$found=@(Find-SyncedLyrics 'Artist — Song' 'Uploader' 100
 Assert ($found.Count -eq 1 -and $found[0].text -eq 'Correct version') 'SoundCloud artist/title fallback failed'
 function Get-Utf8Json([string]$Uri){throw 'Temporary outage'}
 $threw=$false;try{$null=Find-SyncedLyrics 'Song' 'Artist' 100}catch{$threw=$true};Assert $threw 'Transient failure swallowed instead of being retried'
+function Get-Utf8Json([string]$Uri){return @{trackName='Wrong song';artistName='Artist';duration=100;syncedLyrics='[00:01.00]Wrong exact endpoint response'}}
+Assert (@(Find-SyncedLyrics 'Song' 'Artist' 100).Count -eq 0) 'Exact endpoint accepted unrelated lyrics'
+function Get-Utf8Json([string]$Uri){return @{trackName='Song';artistName='Artist';duration=100;syncedLyrics='[00:01.00]';instrumental=$false}}
+Assert (@(Find-SyncedLyrics 'Song' 'Artist' 100).Count -eq 0) 'Blank-only lyrics accepted'
+function Get-Utf8Json([string]$Uri){return @{trackName='Song';artistName='Artist';duration=100;syncedLyrics='[00:01.00]Unexpected';instrumental=$true}}
+Assert (@(Find-SyncedLyrics 'Song' 'Artist' 100).Count -eq 0) 'Instrumental result accepted'
+$script:cancelled=$false;$script:requestCount=0
+function Get-Utf8Json([string]$Uri){$script:requestCount++;$script:cancelled=$true;return @{syncedLyrics=$null}}
+$cancelResult=@(Find-SyncedLyrics 'Song' 'Artist' 100 {$script:cancelled})
+Assert ($cancelResult.Count -eq 0 -and $script:requestCount -eq 1) 'Old song lookup continued after cancellation'
 Write-Output 'PASS: UTF-8, Cyrillic, emoji, LRC timestamps, empty lines, title cleanup, conservative search, upload metadata and retry propagation.'
+Write-Output 'PASS: exact endpoint identity, empty or instrumental results, track-change cancellation.'

@@ -12,7 +12,7 @@ while(-not $Shared.Stop){
         $entry=$cache[$s.Key]
         if(-not $entry -or [DateTime]::UtcNow -ge $entry.RetryAt -or [Math]::Abs($entry.Duration-($s.Duration-$s.Start)) -gt .5){
             $lines=@();$retry=[DateTime]::UtcNow.AddMinutes(10)
-            try {$lines=@(Find-SyncedLyrics $s.Title $s.Artist ($s.Duration-$s.Start));$Shared.LyricsError='';if($lines.Count){$retry=[DateTime]::MaxValue}}
+            try {$lines=@(Find-SyncedLyrics $s.Title $s.Artist ($s.Duration-$s.Start) { $Shared.Stop -or -not $Shared.State -or $Shared.State.Key -ne $s.Key });$Shared.LyricsError='';if($lines.Count){$retry=[DateTime]::MaxValue}}
             catch {$Shared.LyricsError=$_.Exception.Message;$retry=[DateTime]::UtcNow.AddSeconds(30)}
             if($cache.Count -ge 30){$cache.Clear()}
             $entry=@{Lines=$lines;RetryAt=$retry;Duration=($s.Duration-$s.Start)};$cache[$s.Key]=$entry

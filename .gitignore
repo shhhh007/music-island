@@ -20,3 +20,8 @@ release-staging/
 test-install/
 *.user
 .vs/
+
+# Never publish signing secrets
+*.pfx
+*.p12
+*.key

@@ -51,6 +51,8 @@ powershell -NoProfile -STA -ExecutionPolicy Bypass -File .\Island.ps1 -SelfTest
 
 ## Релиз
 
+Для публичного подписанного выпуска следуйте [инструкции по подписи](SIGNING.md). Параметр `-RequireSignature` останавливает сборку до изменения файлов, если сертификат не указан. Обычная сборка ниже создаёт неподписанный пакет для разработки и может блокироваться Smart App Control.
+
 Обновите `VERSION`, затем:
 
 ```powershell

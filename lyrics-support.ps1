@@ -28,7 +28,13 @@ function Convert-Lrc([string]$Text,[double]$Duration) {
     for($i=0;$i -lt $lines.Count;$i++){$lines[$i].end=$(if($i+1 -lt $lines.Count){$lines[$i+1].start}else{$Duration})}
     return $lines
 }
-function Find-SyncedLyrics([string]$Title,[string]$Artist,[double]$Duration) {
+function Test-LyricsMatch($Result,$Pair,[double]$Duration) {
+    return ($Result -and $Result.syncedLyrics -and -not $Result.instrumental -and
+        (Get-LyricsName $Result.trackName) -eq (Get-LyricsName $Pair.Title) -and
+        (Get-LyricsName $Result.artistName) -eq (Get-LyricsName $Pair.Artist) -and
+        [Math]::Abs([double]$Result.duration-$Duration) -le 3)
+}
+function Find-SyncedLyrics([string]$Title,[string]$Artist,[double]$Duration,[scriptblock]$IsCancelled) {
     if($Duration -le 0 -or [string]::IsNullOrWhiteSpace($Title)){return}
     $pairs=@(@{Title=$Title;Artist=$Artist})
     $cleanTitle=Get-LyricsName $Title; $cleanArtist=Get-LyricsName $Artist
@@ -37,19 +43,29 @@ function Find-SyncedLyrics([string]$Title,[string]$Artist,[double]$Duration) {
     $split=[regex]::new('\s+[-–—]\s+').Split($Title,2)
     if($split.Count -eq 2){$pairs+=@{Title=(Get-LyricsName $split[1]);Artist=(Get-LyricsName $split[0])}}
     foreach($pair in $pairs){
+        if($IsCancelled -and (& $IsCancelled)){return}
         if([string]::IsNullOrWhiteSpace($pair.Artist)){continue}
         $track=[Uri]::EscapeDataString($pair.Title);$artistName=[Uri]::EscapeDataString($pair.Artist)
         $seconds=([int][Math]::Round($Duration)).ToString([Globalization.CultureInfo]::InvariantCulture)
         try {$result=Get-Utf8Json "https://lrclib.net/api/get?track_name=$track&artist_name=$artistName&duration=$seconds"}
         catch {if($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -eq 404){continue};throw}
-        if($result.syncedLyrics -and [Math]::Abs([double]$result.duration-$Duration) -le 3){return (Convert-Lrc $result.syncedLyrics $Duration)}
+        if($IsCancelled -and (& $IsCancelled)){return}
+        if(Test-LyricsMatch $result $pair $Duration){
+            $parsed=@(Convert-Lrc $result.syncedLyrics $Duration)
+            if(@($parsed | Where-Object {-not [string]::IsNullOrWhiteSpace($_.text) -and $_.start -lt $_.end}).Count){return $parsed}
+        }
     }
     # Search is deliberately conservative: never substitute a different recording.
     foreach($pair in @($pairs | Select-Object -Last 2)){
+        if($IsCancelled -and (& $IsCancelled)){return}
         if([string]::IsNullOrWhiteSpace($pair.Artist)){continue}
         $query=[Uri]::EscapeDataString($pair.Artist+' '+$pair.Title)
         $results=@(Get-Utf8Json "https://lrclib.net/api/search?q=$query")
-        $match=$results | Where-Object {$_.syncedLyrics -and (Get-LyricsName $_.trackName) -eq (Get-LyricsName $pair.Title) -and (Get-LyricsName $_.artistName) -eq (Get-LyricsName $pair.Artist) -and [Math]::Abs([double]$_.duration-$Duration) -le 3} | Sort-Object {[Math]::Abs([double]$_.duration-$Duration)} | Select-Object -First 1
-        if($match){return (Convert-Lrc $match.syncedLyrics $Duration)}
+        if($IsCancelled -and (& $IsCancelled)){return}
+        $matches=@($results | Where-Object {Test-LyricsMatch $_ $pair $Duration} | Sort-Object {[Math]::Abs([double]$_.duration-$Duration)})
+        foreach($match in $matches){
+            $parsed=@(Convert-Lrc $match.syncedLyrics $Duration)
+            if(@($parsed | Where-Object {-not [string]::IsNullOrWhiteSpace($_.text) -and $_.start -lt $_.end}).Count){return $parsed}
+        }
     }
 }
