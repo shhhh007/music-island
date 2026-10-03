@@ -17,11 +17,13 @@ while(-not $Shared.Stop){
    if($local.State.cover.colors.Count -gt 0){$m.Accent=@($local.State.cover.colors[0])}
    if($null -ne $local.State.volume.app -and $null -ne $local.State.volume.level){$m.Volume=[double]$local.State.volume.level}
   }
-  if($matched -and $local.State.lyrics.state -eq 'found'){
+  if($s -and $ly -and $ly.Key -eq $s.Key -and $ly.Source -eq 'LocalLRC'){
+   $rows=@($ly.Lines)
+  }elseif($matched -and $local.State.lyrics.state -eq 'found'){
    $rows=@($local.State.lyrics.window);$m.LyricsLocal=$true;$m.LyricsIndex=[int]$local.Tick.line
    $m.LyricsPosition=[double]$local.Tick.pos;$m.LyricsSampleUtc=Stamp $local.Updated
   }else{
-   if($s -and $ly -and $ly.Key -eq $s.Key -and $ly.Source -eq 'LRCLIB'){$rows=@($ly.Lines)}
+   if($s -and $ly -and $ly.Key -eq $s.Key -and $ly.Source -in @('LRCLIB','Musixmatch')){$rows=@($ly.Lines)}
   }
   $lines=@();$index=0
   foreach($line in $rows){

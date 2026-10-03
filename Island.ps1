@@ -2,6 +2,9 @@
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName PresentationFramework,PresentationCore,WindowsBase,System.Windows.Forms,System.Drawing,System.Web.Extensions
 Add-Type -Path "$PSScriptRoot\IslandView.dll"
+. "$PSScriptRoot\lyrics-support.ps1"
+. "$PSScriptRoot\lyrics-providers.ps1"
+. "$PSScriptRoot\lyrics-options.ps1"
 $mutex=[Threading.Mutex]::new($false,'Local\MusicIsland.Desktop')
 if(-not $mutex.WaitOne(0)){exit}
 $shared=[hashtable]::Synchronized(@{Root=$PSScriptRoot;Render=$null;ModelError='';PreviewLyrics=($SelfTest -and $PreviewLyrics);Stop=$false;State=$null;Local=$null;Lyrics=$null;Error='';Notice='';Commands=[Collections.Concurrent.ConcurrentQueue[object]]::new();LocalCommands=[Collections.Concurrent.ConcurrentQueue[object]]::new()})
@@ -23,6 +26,7 @@ $trayMenu=[Windows.Forms.ContextMenuStrip]::new()
 $null=$trayMenu.Items.Add('Показать / скрыть',$null,{if($window.IsVisible){$window.Hide()}else{$window.Show()}})
 $null=$trayMenu.Items.Add('Вернуть управление мышью',$null,{$view.SetClickThrough($false);$window.Show()})
 $null=$trayMenu.Items.Add('Настройки',$null,{$view.SetClickThrough($false);$window.Show();$view.ContextMenu.IsOpen=$true})
+$null=$trayMenu.Items.Add('Источники текста / свой .lrc',$null,{Show-LyricsOptions $shared})
 $null=$trayMenu.Items.Add('Выход',$null,{$window.Close()})
 $tray.ContextMenuStrip=$trayMenu;$tray.Add_DoubleClick({if($window.IsVisible){$window.Hide()}else{$window.Show()}})
 $timer=[Windows.Threading.DispatcherTimer]::new();$timer.Interval=[TimeSpan]::FromMilliseconds(100)

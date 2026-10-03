@@ -25,3 +25,5 @@ test-install/
 *.pfx
 *.p12
 *.key
+*.credential.xml
+lyrics-options-preview.png

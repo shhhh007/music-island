@@ -1,13 +1,29 @@
 ﻿function Get-Utf8Json([string]$Uri,[int]$TimeoutMs=6000) {
+    $isLrclib=([Uri]$Uri).Host -eq 'lrclib.net'
+    if($isLrclib){
+        if($script:LrclibRetryUntil -and [DateTime]::UtcNow -lt $script:LrclibRetryUntil){throw 'LRCLIB rate limit: waiting before retry.'}
+        if($script:LrclibLastRequest){$delay=250-([DateTime]::UtcNow-$script:LrclibLastRequest).TotalMilliseconds;if($delay -gt 0){Start-Sleep -Milliseconds ([int]$delay)}}
+        $script:LrclibLastRequest=[DateTime]::UtcNow
+    }
     $request=[Net.HttpWebRequest]::Create($Uri)
     $request.Timeout=$TimeoutMs; $request.ReadWriteTimeout=$TimeoutMs
-    $request.UserAgent='MusicIsland/1.0 (Windows desktop music overlay)'
+    $request.UserAgent='MusicIsland/1.0 (https://github.com/shhhh007/music-island)'
     $request.Accept='application/json'
     $response=$null; $reader=$null
     try {
         $response=$request.GetResponse()
         $reader=[IO.StreamReader]::new($response.GetResponseStream(),[Text.UTF8Encoding]::new($false,$true),$true)
         return ($reader.ReadToEnd() | ConvertFrom-Json)
+    } catch {
+        $failure=$_.Exception
+        while($failure.InnerException -and -not ($failure -is [Net.WebException])){$failure=$failure.InnerException}
+        if($isLrclib -and $failure -is [Net.WebException] -and $failure.Response -and [int]$failure.Response.StatusCode -eq 429){
+            $retryAfter=$failure.Response.Headers['Retry-After'];$seconds=60;$parsedSeconds=0;$retryDate=[DateTimeOffset]::MinValue
+            if([int]::TryParse($retryAfter,[ref]$parsedSeconds)){$seconds=[Math]::Max(1,$parsedSeconds)}
+            elseif([DateTimeOffset]::TryParse($retryAfter,[ref]$retryDate)){$seconds=[Math]::Max(1,($retryDate.UtcDateTime-[DateTime]::UtcNow).TotalSeconds)}
+            $script:LrclibRetryUntil=[DateTime]::UtcNow.AddSeconds($seconds)
+        }
+        throw
     } finally {if($reader){$reader.Dispose()};if($response){$response.Dispose()}}
 }
 function Get-LyricsName([string]$Value) {
@@ -48,7 +64,12 @@ function Find-SyncedLyrics([string]$Title,[string]$Artist,[double]$Duration,[scr
         $track=[Uri]::EscapeDataString($pair.Title);$artistName=[Uri]::EscapeDataString($pair.Artist)
         $seconds=([int][Math]::Round($Duration)).ToString([Globalization.CultureInfo]::InvariantCulture)
         try {$result=Get-Utf8Json "https://lrclib.net/api/get?track_name=$track&artist_name=$artistName&duration=$seconds"}
-        catch {if($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -eq 404){continue};throw}
+        catch {
+            $failure=$_.Exception
+            while($failure.InnerException -and -not ($failure -is [Net.WebException])){$failure=$failure.InnerException}
+            if($failure -is [Net.WebException] -and $failure.Response -and [int]$failure.Response.StatusCode -eq 404){$failure.Response.Dispose();continue}
+            throw
+        }
         if($IsCancelled -and (& $IsCancelled)){return}
         if(Test-LyricsMatch $result $pair $Duration){
             $parsed=@(Convert-Lrc $result.syncedLyrics $Duration)
